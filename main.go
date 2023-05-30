@@ -3,14 +3,23 @@ package main
 import (
 	"flag"
 	"fmt"
+	"html/template"
+	"io"
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"math/rand"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/StevenZack/openurl"
 )
+
+var open = flag.Bool("open", false, "open in browser after build")
 
 func init() {
 	log.SetFlags(log.Lshortfile)
@@ -40,14 +49,56 @@ func main() {
 	// remove dist/*
 	os.RemoveAll(out)
 
+	// template
+	var root *template.Template
+	e = filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+		path = filepath.ToSlash(path)
+
+		switch filepath.Ext(info.Name()) {
+		case ".html":
+			relativeUri := strings.TrimPrefix(strings.TrimPrefix(path, dir), "/") // like /index.html
+			if root == nil {
+				root = template.New(relativeUri)
+			}
+
+			var t *template.Template
+			if relativeUri == root.Name() {
+				t = root
+			} else {
+				t = root.New(relativeUri)
+			}
+
+			//read
+			fi, e := os.OpenFile(path, os.O_RDONLY, 0644)
+			if e != nil {
+				return e
+			}
+			defer fi.Close()
+			b, e := io.ReadAll(fi)
+			if e != nil {
+				return e
+			}
+
+			_, e = t.Parse(string(b))
+			if e != nil {
+				return e
+			}
+		}
+		return nil
+	})
+	if e != nil {
+		log.Println(e)
+		return
+	}
+
 	//walk
 	e = filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() {
 			return nil
 		}
 		path = filepath.ToSlash(path)
-		relativePath := strings.TrimPrefix(path, dir)
-		if strings.HasPrefix(strings.TrimPrefix(relativePath, "/"), out) {
+		relativePath := strings.TrimPrefix(strings.TrimPrefix(path, dir), "/")
+		if strings.HasPrefix(relativePath, out) {
 			// dist/*
 			return nil
 		}
@@ -60,10 +111,25 @@ func main() {
 		}
 
 		fmt.Println(relativePath)
-		e = CopyFile(path, dst)
-		if e != nil {
-			log.Println(e)
-			return e
+		if root != nil && strings.HasSuffix(relativePath, ".html") {
+			fo, e := os.OpenFile(dst, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+			if e != nil {
+				log.Println(e)
+				return e
+			}
+			defer fo.Close()
+			e = root.ExecuteTemplate(fo, relativePath, nil)
+			if e != nil {
+				log.Println(e)
+				return e
+			}
+
+		} else {
+			e = copyFile(path, dst)
+			if e != nil {
+				log.Println(e)
+				return e
+			}
 		}
 
 		e = tryMinify(dst)
@@ -73,9 +139,26 @@ func main() {
 		}
 		return nil
 	})
+
+	if *open {
+		port := RandomPort()
+		http.Handle("/", &Router{dir: out})
+		addr := "http://localhost:" + strconv.Itoa(port)
+		fmt.Println(addr)
+		openurl.Open(addr)
+		e = http.ListenAndServe(":"+strconv.Itoa(port), nil)
+		if e != nil {
+			log.Println(e)
+			return
+		}
+	}
 }
 
-func CopyFile(path, dst string) error {
+func RandomPort() int {
+	return rand.Intn(10000) + 10000
+}
+
+func copyFile(path, dst string) error {
 	b, e := ioutil.ReadFile(path)
 	if e != nil {
 		log.Println(e)

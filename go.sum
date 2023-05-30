@@ -1,0 +1,4 @@
+github.com/StevenZack/openurl v0.0.0-20190430065139-b25363f65ff8 h1:aaBpb+Ig4NNrG4omEUvLdgeizvwTOLGek0BZuuULYYI=
+github.com/StevenZack/openurl v0.0.0-20190430065139-b25363f65ff8/go.mod h1:tGSuG3wQ/DMizcSjaESj69o1TvmVrYuI6NLlF7Dp8iI=
+github.com/StevenZack/tools v1.16.0 h1:T5+t+zhjJYmEPyQnOwNE3iCu4czif6Mx42BCtqJLRYY=
+github.com/StevenZack/tools v1.16.0/go.mod h1:+OpYkYBiPQjT5bjlidWKbyjr1Q5M56ZN2S/hustkhVM=
