@@ -1,6 +1,6 @@
 # A tool for static website deployment 
 
-Build the static html website in current directory into `dist/` folder, and open a `Github Pages`-like web server to see the result.
+Build the static html website in current directory into `docs/` folder, and open a `Github Pages`-like web server to see the result.
 
 ```shell
 static --open

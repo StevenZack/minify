@@ -39,7 +39,7 @@ func main() {
 		return
 	}
 	dir = filepath.ToSlash(dir)
-	const out = "dist"
+	const out = "docs"
 
 	// dependencies
 	checkNpmDeps("html-minifier", "")
