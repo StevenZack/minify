@@ -19,12 +19,12 @@ import (
 	"github.com/StevenZack/openurl"
 )
 
-var open = flag.Bool("open", false, "open in browser after build")
+var port = flag.Int("p", 3000, "specific server port to listen")
 
 func init() {
 	log.SetFlags(log.Lshortfile)
 	flag.Usage = func() {
-		fmt.Println("minify [-options]")
+		fmt.Println("static [build/run/serve]")
 		flag.PrintDefaults()
 	}
 }
@@ -41,6 +41,38 @@ func main() {
 	dir = filepath.ToSlash(dir)
 	const out = "docs"
 
+	// args
+	switch flag.Arg(0) {
+	case "build":
+		build(dir, out)
+	case "run":
+		build(dir, out)
+		serve(out)
+	case "serve":
+		serve(dir)
+	default:
+		if flag.Arg(0) == "" {
+			flag.PrintDefaults()
+			return
+		}
+	}
+
+}
+
+func serve(out string) {
+	http.Handle("/", &Router{dir: out})
+	addr := "http://localhost:" + strconv.Itoa(*port)
+	fmt.Println(addr)
+	openurl.Open(addr)
+	e := http.ListenAndServe(":"+strconv.Itoa(*port), nil)
+	if e != nil {
+		log.Println(e)
+		return
+	}
+}
+
+func build(dir, out string) {
+	var e error
 	// dependencies
 	checkNpmDeps("html-minifier", "")
 	checkNpmDeps("uglifyjs", "uglify-js")
@@ -139,19 +171,6 @@ func main() {
 		}
 		return nil
 	})
-
-	if *open {
-		port := RandomPort()
-		http.Handle("/", &Router{dir: out})
-		addr := "http://localhost:" + strconv.Itoa(port)
-		fmt.Println(addr)
-		openurl.Open(addr)
-		e = http.ListenAndServe(":"+strconv.Itoa(port), nil)
-		if e != nil {
-			log.Println(e)
-			return
-		}
-	}
 }
 
 func RandomPort() int {
